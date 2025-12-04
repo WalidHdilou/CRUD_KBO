@@ -11,7 +11,7 @@
       padding: 20px;
     }
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       background: #fff;
       padding: 20px 24px;
@@ -72,8 +72,8 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 16px;
-      font-size: 14px;
+      margin-top: 12px;
+      font-size: 13px;
     }
     th, td {
       border: 1px solid #e5e7eb;
@@ -99,8 +99,7 @@
   <div class="container">
     <h1>Recherche d'entreprise KBO</h1>
     <p class="small">
-      Tu peux rechercher soit par <strong>numéro d'entreprise</strong> (ex : 0200.065.765),
-      soit par <strong>nom</strong> (dénomination).
+      Recherche par <strong>numéro d'entreprise</strong> (ex : 0200.065.765) ou par <strong>nom</strong> (dénomination).
     </p>
 
     <div class="search-box">
@@ -122,11 +121,13 @@
     </div>
 
     <div id="results" style="display:none;">
+      <!-- ENTREPRISE -->
       <div class="section-title">Informations de l'entreprise</div>
       <table id="enterpriseTable">
         <tbody></tbody>
       </table>
 
+      <!-- DENOMINATIONS -->
       <div class="section-title">Dénominations</div>
       <table id="denominationsTable">
         <thead>
@@ -139,6 +140,7 @@
         <tbody></tbody>
       </table>
 
+      <!-- ETABLISSEMENTS -->
       <div class="section-title">Établissements</div>
       <table id="establishmentsTable">
         <thead>
@@ -149,11 +151,68 @@
         </thead>
         <tbody></tbody>
       </table>
+
+      <!-- ACTIVITÉS -->
+      <div class="section-title">Activités (NACE)</div>
+      <table id="activitiesTable">
+        <thead>
+          <tr>
+            <th>Groupe</th>
+            <th>Version</th>
+            <th>Code NACE</th>
+            <th>Classification</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- ADRESSES -->
+      <div class="section-title">Adresses</div>
+      <table id="addressesTable">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Rue (FR)</th>
+            <th>Rue (NL)</th>
+            <th>CP</th>
+            <th>Commune (FR)</th>
+            <th>Commune (NL)</th>
+            <th>N°</th>
+            <th>Boîte</th>
+            <th>Info supp.</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- CONTACTS -->
+      <div class="section-title">Contacts</div>
+      <table id="contactsTable">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Valeur</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <!-- BRANCHES -->
+      <div class="section-title">Branches</div>
+      <table id="branchesTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Date de début</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 
   <script>
-    const API_BASE_URL = 'http://localhost:8000/enterprises'; // adapte si besoin
+    const API_BASE_URL = 'http://localhost:8000/enterprises';
 
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
@@ -163,6 +222,10 @@
     const enterpriseTableBody = document.querySelector('#enterpriseTable tbody');
     const denominationsTableBody = document.querySelector('#denominationsTable tbody');
     const establishmentsTableBody = document.querySelector('#establishmentsTable tbody');
+    const activitiesTableBody = document.querySelector('#activitiesTable tbody');
+    const addressesTableBody = document.querySelector('#addressesTable tbody');
+    const contactsTableBody = document.querySelector('#contactsTable tbody');
+    const branchesTableBody = document.querySelector('#branchesTable tbody');
 
     function setMessage(text, type = 'info') {
       messageEl.textContent = text || '';
@@ -173,6 +236,10 @@
       enterpriseTableBody.innerHTML = '';
       denominationsTableBody.innerHTML = '';
       establishmentsTableBody.innerHTML = '';
+      activitiesTableBody.innerHTML = '';
+      addressesTableBody.innerHTML = '';
+      contactsTableBody.innerHTML = '';
+      branchesTableBody.innerHTML = '';
     }
 
     async function doSearch() {
@@ -210,7 +277,7 @@
 
         const data = await response.json();
 
-        // Remplir le tableau entreprise
+        // -------- ENTREPRISE --------
         const rows = [
           ['Numéro', data.enterprise_number],
           ['Status', data.status],
@@ -232,7 +299,7 @@
           enterpriseTableBody.appendChild(tr);
         });
 
-        // Dénominations
+        // -------- DENOMINATIONS --------
         if (Array.isArray(data.Denominations)) {
           data.Denominations.forEach(d => {
             const tr = document.createElement('tr');
@@ -249,7 +316,7 @@
           });
         }
 
-        // Établissements
+        // -------- ETABLISSEMENTS --------
         if (Array.isArray(data.Establishments)) {
           data.Establishments.forEach(e => {
             const tr = document.createElement('tr');
@@ -260,6 +327,92 @@
             tr.appendChild(tdNum);
             tr.appendChild(tdStart);
             establishmentsTableBody.appendChild(tr);
+          });
+        }
+
+        // -------- ACTIVITÉS --------
+        if (Array.isArray(data.Activities)) {
+          data.Activities.forEach(a => {
+            const tr = document.createElement('tr');
+            const tdGroup = document.createElement('td');
+            const tdVersion = document.createElement('td');
+            const tdCode = document.createElement('td');
+            const tdClass = document.createElement('td');
+            tdGroup.textContent = a.activity_group ?? '';
+            tdVersion.textContent = a.nace_version ?? '';
+            tdCode.textContent = a.nace_code ?? '';
+            tdClass.textContent = a.classification ?? '';
+            tr.appendChild(tdGroup);
+            tr.appendChild(tdVersion);
+            tr.appendChild(tdCode);
+            tr.appendChild(tdClass);
+            activitiesTableBody.appendChild(tr);
+          });
+        }
+
+        // -------- ADRESSES --------
+        if (Array.isArray(data.Addresses)) {
+          data.Addresses.forEach(ad => {
+            const tr = document.createElement('tr');
+            const tdType = document.createElement('td');
+            const tdStreetFr = document.createElement('td');
+            const tdStreetNl = document.createElement('td');
+            const tdZip = document.createElement('td');
+            const tdCityFr = document.createElement('td');
+            const tdCityNl = document.createElement('td');
+            const tdNum = document.createElement('td');
+            const tdBox = document.createElement('td');
+            const tdInfo = document.createElement('td');
+
+            tdType.textContent = ad.type_of_address ?? '';
+            tdStreetFr.textContent = ad.street_fr ?? '';
+            tdStreetNl.textContent = ad.street_nl ?? '';
+            tdZip.textContent = ad.zipcode ?? '';
+            tdCityFr.textContent = ad.municipality_fr ?? '';
+            tdCityNl.textContent = ad.municipality_nl ?? '';
+            tdNum.textContent = ad.house_number ?? '';
+            tdBox.textContent = ad.box ?? '';
+            tdInfo.textContent = ad.extra_address_info ?? '';
+
+            tr.appendChild(tdType);
+            tr.appendChild(tdStreetFr);
+            tr.appendChild(tdStreetNl);
+            tr.appendChild(tdZip);
+            tr.appendChild(tdCityFr);
+            tr.appendChild(tdCityNl);
+            tr.appendChild(tdNum);
+            tr.appendChild(tdBox);
+            tr.appendChild(tdInfo);
+
+            addressesTableBody.appendChild(tr);
+          });
+        }
+
+        // -------- CONTACTS --------
+        if (Array.isArray(data.Contacts)) {
+          data.Contacts.forEach(c => {
+            const tr = document.createElement('tr');
+            const tdType = document.createElement('td');
+            const tdValue = document.createElement('td');
+            tdType.textContent = c.contact_type ?? '';
+            tdValue.textContent = c.value ?? '';
+            tr.appendChild(tdType);
+            tr.appendChild(tdValue);
+            contactsTableBody.appendChild(tr);
+          });
+        }
+
+        // -------- BRANCHES --------
+        if (Array.isArray(data.Branches)) {
+          data.Branches.forEach(b => {
+            const tr = document.createElement('tr');
+            const tdId = document.createElement('td');
+            const tdStart = document.createElement('td');
+            tdId.textContent = b.id ?? '';
+            tdStart.textContent = b.start_date ?? '';
+            tr.appendChild(tdId);
+            tr.appendChild(tdStart);
+            branchesTableBody.appendChild(tr);
           });
         }
 
