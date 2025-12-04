@@ -1,5 +1,14 @@
-const { Enterprise, Establishment, Denomination } = require('../models');
+const {
+    Enterprise,
+    Establishment,
+    Denomination,
+    Activity,
+    Address,
+    Contact,
+    Branch,
+} = require('../models');
 const { Op } = require('sequelize');
+
 
 
 module.exports = {
@@ -8,8 +17,9 @@ module.exports = {
             console.log('GET /enterprises/:id =>', req.params.id);
 
             const enterprise = await Enterprise.findByPk(req.params.id, {
-                include: [Establishment],
+                include: [Establishment, Denomination, Activity, Address, Contact, Branch],
             });
+
 
             if (!enterprise) {
                 return res.status(404).json({ message: 'Entreprise non trouvée' });
@@ -24,8 +34,10 @@ module.exports = {
 
     async createEnterprise(req, res) {
         try {
-            const enterprise = await Enterprise.create(req.body);
-            res.status(201).json(enterprise);
+            const enterprise = await Enterprise.findByPk(enterpriseNumber, {
+                include: [Establishment, Denomination, Activity, Address, Contact, Branch],
+            });
+
         } catch (err) {
             console.error(' ERREUR DANS createEnterprise :', err);
             res.status(500).json({ message: 'Erreur serveur', error: err.message });
