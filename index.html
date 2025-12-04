@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Recherche entreprise KBO</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+    h1 {
+      margin-top: 0;
+    }
+    .search-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .search-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      background: #2563eb;
+      color: white;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .radio-group {
+      display: flex;
+      gap: 12px;
+      font-size: 14px;
+    }
+    .message {
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    .message.error {
+      color: #b91c1c;
+    }
+    .message.info {
+      color: #4b5563;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    th {
+      background: #f3f4f6;
+    }
+    .section-title {
+      margin-top: 24px;
+      margin-bottom: 4px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .small {
+      font-size: 12px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Recherche d'entreprise KBO</h1>
+    <p class="small">
+      Tu peux rechercher soit par <strong>numéro d'entreprise</strong> (ex : 0200.065.765),
+      soit par <strong>nom</strong> (dénomination).
+    </p>
+
+    <div class="search-box">
+      <div class="search-row">
+        <input id="searchInput" type="text" placeholder="Numéro d'entreprise ou nom..." />
+        <button id="searchBtn">Rechercher</button>
+      </div>
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="searchType" value="number" checked />
+          Par numéro
+        </label>
+        <label>
+          <input type="radio" name="searchType" value="name" />
+          Par nom
+        </label>
+      </div>
+      <div id="message" class="message info"></div>
+    </div>
+
+    <div id="results" style="display:none;">
+      <div class="section-title">Informations de l'entreprise</div>
+      <table id="enterpriseTable">
+        <tbody></tbody>
+      </table>
+
+      <div class="section-title">Dénominations</div>
+      <table id="denominationsTable">
+        <thead>
+          <tr>
+            <th>Langue</th>
+            <th>Type</th>
+            <th>Nom / Dénomination</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="section-title">Établissements</div>
+      <table id="establishmentsTable">
+        <thead>
+          <tr>
+            <th>Numéro d'établissement</th>
+            <th>Date de début</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:8000/enterprises'; // adapte si besoin
+
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const messageEl = document.getElementById('message');
+    const resultsEl = document.getElementById('results');
+
+    const enterpriseTableBody = document.querySelector('#enterpriseTable tbody');
+    const denominationsTableBody = document.querySelector('#denominationsTable tbody');
+    const establishmentsTableBody = document.querySelector('#establishmentsTable tbody');
+
+    function setMessage(text, type = 'info') {
+      messageEl.textContent = text || '';
+      messageEl.className = 'message ' + type;
+    }
+
+    function clearTables() {
+      enterpriseTableBody.innerHTML = '';
+      denominationsTableBody.innerHTML = '';
+      establishmentsTableBody.innerHTML = '';
+    }
+
+    async function doSearch() {
+      const value = searchInput.value.trim();
+      const searchType = document.querySelector('input[name="searchType"]:checked').value;
+
+      if (!value) {
+        setMessage("Merci de saisir un numéro d'entreprise ou un nom.", 'error');
+        resultsEl.style.display = 'none';
+        clearTables();
+        return;
+      }
+
+      setMessage('Recherche en cours...', 'info');
+      searchBtn.disabled = true;
+      resultsEl.style.display = 'none';
+      clearTables();
+
+      try {
+        const params = new URLSearchParams();
+        if (searchType === 'number') {
+          params.append('number', value);
+        } else {
+          params.append('name', value);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const msg = errorData.message || `Erreur HTTP ${response.status}`;
+          setMessage(msg, 'error');
+          return;
+        }
+
+        const data = await response.json();
+
+        // Remplir le tableau entreprise
+        const rows = [
+          ['Numéro', data.enterprise_number],
+          ['Status', data.status],
+          ['Situation juridique', data.juridical_situation],
+          ['Type', data.type_of_enterprise],
+          ['Forme juridique', data.juridical_form],
+          ['Forme CAC', data.juridical_form_cac],
+          ['Date de début', data.start_date],
+        ];
+
+        rows.forEach(([label, value]) => {
+          const tr = document.createElement('tr');
+          const th = document.createElement('th');
+          const td = document.createElement('td');
+          th.textContent = label;
+          td.textContent = value ?? '';
+          tr.appendChild(th);
+          tr.appendChild(td);
+          enterpriseTableBody.appendChild(tr);
+        });
+
+        // Dénominations
+        if (Array.isArray(data.Denominations)) {
+          data.Denominations.forEach(d => {
+            const tr = document.createElement('tr');
+            const tdLang = document.createElement('td');
+            const tdType = document.createElement('td');
+            const tdDenom = document.createElement('td');
+            tdLang.textContent = d.language ?? '';
+            tdType.textContent = d.type_of_denomination ?? '';
+            tdDenom.textContent = d.denomination ?? '';
+            tr.appendChild(tdLang);
+            tr.appendChild(tdType);
+            tr.appendChild(tdDenom);
+            denominationsTableBody.appendChild(tr);
+          });
+        }
+
+        // Établissements
+        if (Array.isArray(data.Establishments)) {
+          data.Establishments.forEach(e => {
+            const tr = document.createElement('tr');
+            const tdNum = document.createElement('td');
+            const tdStart = document.createElement('td');
+            tdNum.textContent = e.establishment_number ?? '';
+            tdStart.textContent = e.start_date ?? '';
+            tr.appendChild(tdNum);
+            tr.appendChild(tdStart);
+            establishmentsTableBody.appendChild(tr);
+          });
+        }
+
+        resultsEl.style.display = 'block';
+        setMessage('Résultat trouvé.', 'info');
+      } catch (err) {
+        console.error(err);
+        setMessage("Erreur lors de l'appel à l'API.", 'error');
+      } finally {
+        searchBtn.disabled = false;
+      }
+    }
+
+    searchBtn.addEventListener('click', doSearch);
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        doSearch();
+      }
+    });
+  </script>
+</body>
+</html>
